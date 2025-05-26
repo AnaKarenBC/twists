@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Twist - Mensajes Cortos</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <header>
+      <h1>Twist</h1>
+      <p class="subtitle">Comparte tus pensamientos en hilos</p>
+    </header>
+
+    <main>
+      <section class="new-twist-container">
+        <textarea id="twist-content" placeholder="¿Qué está pasando?"></textarea>
+        <div class="twist-actions">
+          <span id="char-count">280</span>
+          <button id="publish-twist">Publicar</button>
+        </div>
+      </section>
+
+      <section class="threads-container">
+        <h2>Hilos recientes</h2>
+        <div id="threads-list">
+          <!-- Los hilos se agregarán dinámicamente aquí -->
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Desarrollado con TypeScript - 2025</p>
+    </footer>
+  </div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
