@@ -17,20 +17,40 @@
     </header>
 
     <main>
-      <section class="new-twist-container">
-        <textarea id="twist-content" placeholder="¿Qué está pasando?"></textarea>
-        <div class="twist-actions">
-          <span id="char-count">280</span>
-          <button id="publish-twist">Publicar</button>
-        </div>
-      </section>
+      <!-- Contenido principal (lado izquierdo) -->
+      <div class="main-content">
+        <section class="new-twist-container">
+          <textarea id="twist-content" placeholder="¿Qué está pasando?"></textarea>
+          <div class="twist-actions">
+            <span id="char-count">280</span>
+            <button id="publish-twist">Publicar</button>
+          </div>
+        </section>
 
-      <section class="threads-container">
-        <h2>Hilos recientes</h2>
-        <div id="threads-list">
-          <!-- Los hilos se agregarán dinámicamente aquí -->
+        <section class="threads-container">
+          <h2>Hilos recientes</h2>
+          <div id="threads-list">
+            <!-- Los hilos se agregarán dinámicamente aquí -->
+          </div>
+          <div id="twist-container">
+            <!-- Contenedor adicional para los nuevos twists -->
+          </div>
+        </section>
+      </div>
+
+      <!-- Sidebar del perfil (lado derecho) -->
+      <aside class="profile-sidebar">
+        <h2>Perfil de Usuario</h2>
+        <label for="username-input">Nombre:</label>
+        <input type="text" id="username-input" placeholder="Tu nombre" />
+        
+        <label for="avatar-input">Avatar (URL):</label>
+        <input type="text" id="avatar-input" placeholder="Internet https://ejemplo.com/avatar.png" />
+
+        <div class="avatar-preview">
+          <img id="avatar-preview" src="https://via.placeholder.com/80" alt="Avatar" />
         </div>
-      </section>
+      </aside>
     </main>
 
     <footer>

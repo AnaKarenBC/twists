@@ -1,14 +1,30 @@
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 // Clase principal para manejar la aplicación
 var TwistApp = /** @class */ (function () {
     function TwistApp() {
         this.maxCharacters = 280;
         this.threads = [];
-        this.currentUser = "Usuario"; // En una app real, esto vendría de la autenticación
+        this.currentUser = "Usuario";
+        this.currentThread = null;
         // Inicializar elementos del DOM
         this.textArea = document.getElementById('twist-content');
         this.publishButton = document.getElementById('publish-twist');
         this.charCount = document.getElementById('char-count');
         this.threadsList = document.getElementById('threads-list');
+        this.usernameInput = document.getElementById('username-input');
+        this.avatarInput = document.getElementById('avatar-input');
+        this.twistContainer = document.getElementById('twist-container');
+        this.avatarPreview = document.getElementById('avatar-preview');
         // Cargar datos almacenados localmente si existen
         this.loadFromLocalStorage();
         // Configurar event listeners
@@ -24,263 +40,360 @@ var TwistApp = /** @class */ (function () {
         });
         // Evento para publicar un nuevo twist
         this.publishButton.addEventListener('click', function () {
-            _this.publishTwist();
+            _this.publishTwistWithAvatar();
         });
         // Evento para detectar "Enter" y publicar (Ctrl+Enter)
         this.textArea.addEventListener('keydown', function (e) {
             if (e.key === 'Enter' && e.ctrlKey) {
                 e.preventDefault();
-                _this.publishTwist();
+                _this.publishTwistWithAvatar();
             }
         });
+        // Evento para actualizar el preview del avatar
+        this.avatarInput.addEventListener('input', function () {
+            _this.updateAvatarPreview();
+        });
+        // Evento para actualizar el preview cuando se pierde el foco
+        this.avatarInput.addEventListener('blur', function () {
+            _this.updateAvatarPreview();
+        });
     };
-    TwistApp.prototype.updateCharCount = function () {
-        var remaining = this.maxCharacters - this.textArea.value.length;
-        this.charCount.textContent = remaining.toString();
-        // Cambiar el estilo si se acerca o supera el límite
-        if (remaining < 0) {
-            this.charCount.classList.add('limit');
-            this.publishButton.disabled = true;
-        }
-        else if (remaining < 20) {
-            this.charCount.classList.add('limit');
-            this.publishButton.disabled = false;
+    TwistApp.prototype.updateAvatarPreview = function () {
+        var _this = this;
+        var avatarUrl = this.avatarInput.value.trim();
+        if (avatarUrl) {
+            // Verificar si la URL es válida
+            var img = new Image();
+            img.onload = function () {
+                _this.avatarPreview.src = avatarUrl;
+            };
+            img.onerror = function () {
+                _this.avatarPreview.src = "https://via.placeholder.com/80";
+            };
+            img.src = avatarUrl;
         }
         else {
-            this.charCount.classList.remove('limit');
-            this.publishButton.disabled = false;
+            this.avatarPreview.src = "";
         }
     };
-    TwistApp.prototype.publishTwist = function (parentId) {
-        // Obtener contenido y validarlo
-        var content = parentId ?
-            document.getElementById("reply-input-".concat(parentId)).value :
-            this.textArea.value;
-        if (!content || content.trim() === '' || content.length > this.maxCharacters) {
+    TwistApp.prototype.publishTwistWithAvatar = function () {
+        var _this = this;
+        var text = this.textArea.value.trim();
+        var username = this.usernameInput.value.trim() || "Anónimo";
+        var avatarUrl = this.avatarInput.value.trim() || "https://via.placeholder.com/80";
+        if (text === "")
             return;
-        }
-        // Crear nuevo twist
-        var newTwist = {
+        // Crear el twist con avatar
+        var twist = document.createElement("div");
+        twist.className = "twist";
+        var avatar = document.createElement("img");
+        avatar.src = avatarUrl;
+        avatar.className = "twist-avatar";
+        avatar.onerror = function () {
+            avatar.src = "https://via.placeholder.com/80";
+        };
+        var content = document.createElement("div");
+        content.className = "twist-content";
+        var header = document.createElement("div");
+        header.className = "twist-header";
+        var user = document.createElement("span");
+        user.className = "username";
+        user.textContent = username;
+        var timestamp = document.createElement("span");
+        timestamp.className = "twist-timestamp";
+        timestamp.textContent = "Ahora";
+        var message = document.createElement("span");
+        message.className = "message";
+        message.textContent = text;
+        // Crear barra de acciones
+        var actionsBar = document.createElement("div");
+        actionsBar.className = "twist-actions-bar";
+        // Botón de responder
+        var replyButton = document.createElement("button");
+        replyButton.className = "twist-action reply-btn";
+        replyButton.innerHTML = "\n      <svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\">\n        <path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\"></path>\n      </svg>\n      <span>Responder</span>\n    ";
+        // Botón de me gusta
+        var likeButton = document.createElement("button");
+        likeButton.className = "twist-action like-btn";
+        likeButton.innerHTML = "\n      <svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\">\n        <path d=\"M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z\"></path>\n      </svg>\n      <span>0</span>\n    ";
+        // Event listeners para las acciones
+        replyButton.addEventListener('click', function () {
+            _this.showReplyForm(twist, twistData);
+        });
+        likeButton.addEventListener('click', function () {
+            _this.toggleLike(twistData, likeButton);
+        });
+        actionsBar.appendChild(replyButton);
+        actionsBar.appendChild(likeButton);
+        header.appendChild(user);
+        header.appendChild(timestamp);
+        content.appendChild(header);
+        content.appendChild(message);
+        content.appendChild(actionsBar);
+        twist.appendChild(avatar);
+        twist.appendChild(content);
+        // Añadir al contenedor de threads
+        this.threadsList.appendChild(twist);
+        // Limpiar el textarea después de publicar
+        this.textArea.value = "";
+        this.updateCharCount();
+        // Crear objeto Twist para almacenamiento
+        var twistData = {
             id: this.generateId(),
-            content: content.trim(),
-            author: this.currentUser,
+            content: text,
+            username: username,
+            avatarUrl: avatarUrl,
             timestamp: new Date(),
             likes: 0,
-            isThread: !parentId,
-            parentId: parentId,
+            isLiked: false,
             replies: []
         };
-        // Añadir al array de hilos o como respuesta
-        if (parentId) {
-            // Es una respuesta a un twist existente
-            this.addReplyToTwist(parentId, newTwist);
-            // Limpiar el textarea de respuesta
-            document.getElementById("reply-input-".concat(parentId)).value = '';
+        this.threads.push(twistData);
+        this.saveToLocalStorage();
+        // Scroll suave hacia el nuevo twist
+        twist.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    };
+    TwistApp.prototype.updateCharCount = function () {
+        var currentLength = this.textArea.value.length;
+        var remaining = this.maxCharacters - currentLength;
+        this.charCount.textContent = "".concat(remaining);
+        // Cambiar color según los caracteres restantes
+        if (remaining < 20) {
+            this.charCount.style.color = 'var(--error-color)';
+            this.charCount.classList.add('limit');
+        }
+        else if (remaining < 50) {
+            this.charCount.style.color = '#ffa726';
+            this.charCount.classList.remove('limit');
         }
         else {
-            // Es un nuevo hilo
-            this.threads.unshift(newTwist);
-            // Limpiar el textarea principal
-            this.textArea.value = '';
-            this.updateCharCount();
+            this.charCount.style.color = 'var(--text-secondary)';
+            this.charCount.classList.remove('limit');
         }
-        // Guardar en localStorage
-        this.saveToLocalStorage();
-        // Renderizar hilos actualizados
-        this.renderThreads();
-    };
-    TwistApp.prototype.addReplyToTwist = function (twistId, reply) {
-        // Función recursiva para buscar el twist al que responder
-        var findAndAddReply = function (items) {
-            for (var _i = 0, items_1 = items; _i < items_1.length; _i++) {
-                var item = items_1[_i];
-                if (item.id === twistId) {
-                    item.replies.push(reply);
-                    return true;
-                }
-                if (item.replies.length > 0) {
-                    if (findAndAddReply(item.replies)) {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        };
-        findAndAddReply(this.threads);
+        // Deshabilitar botón si se excede el límite
+        this.publishButton.disabled = remaining < 0 || this.textArea.value.trim() === '';
     };
     TwistApp.prototype.renderThreads = function () {
         var _this = this;
-        // Limpiar la lista actual
         this.threadsList.innerHTML = '';
-        // Verificar si hay hilos para mostrar
-        if (this.threads.length === 0) {
-            this.threadsList.innerHTML = "\n        <div class=\"no-threads\">\n          <p>No hay hilos para mostrar. \u00A1S\u00E9 el primero en publicar!</p>\n        </div>\n      ";
-            return;
-        }
-        // Renderizar cada hilo
-        this.threads.forEach(function (thread) {
-            var threadElement = _this.createThreadElement(thread);
+        this.threads.forEach(function (twist) {
+            var threadElement = _this.createTwistElement(twist);
             _this.threadsList.appendChild(threadElement);
         });
-    };
-    TwistApp.prototype.createThreadElement = function (thread) {
-        var _this = this;
-        var threadElement = document.createElement('div');
-        threadElement.className = 'thread';
-        threadElement.dataset.threadId = thread.id;
-        // Crear el elemento del twist principal
-        threadElement.appendChild(this.createTwistElement(thread));
-        // Renderizar respuestas recursivamente si existen
-        if (thread.replies.length > 0) {
-            var repliesContainer_1 = document.createElement('div');
-            repliesContainer_1.className = 'replies';
-            thread.replies.forEach(function (reply) {
-                repliesContainer_1.appendChild(_this.createTwistElement(reply));
-            });
-            threadElement.appendChild(repliesContainer_1);
-        }
-        return threadElement;
     };
     TwistApp.prototype.createTwistElement = function (twist) {
         var _this = this;
         var twistElement = document.createElement('div');
         twistElement.className = 'twist';
-        twistElement.dataset.twistId = twist.id;
-        // Formatear fecha
-        var formattedDate = this.formatDate(twist.timestamp);
-        // Crear contenido HTML del twist
-        twistElement.innerHTML = "\n      <div class=\"twist-header\">\n        <span class=\"twist-author\">".concat(twist.author, "</span>\n        <span class=\"twist-time\">").concat(formattedDate, "</span>\n      </div>\n      <div class=\"twist-content\">").concat(this.formatContent(twist.content), "</div>\n      <div class=\"twist-actions-bar\">\n        <span class=\"twist-action like-action\" data-twist-id=\"").concat(twist.id, "\">\n          <i class=\"far fa-heart\"></i> ").concat(twist.likes, "\n        </span>\n        <span class=\"twist-action reply-action\" data-twist-id=\"").concat(twist.id, "\">\n          <i class=\"far fa-comment\"></i> Responder\n        </span>\n      </div>\n      <div class=\"reply-container\" id=\"reply-container-").concat(twist.id, "\" style=\"display: none;\">\n        <div class=\"reply-input\">\n          <textarea id=\"reply-input-").concat(twist.id, "\" placeholder=\"Escribe tu respuesta...\"></textarea>\n          <button class=\"reply-button\" data-parent-id=\"").concat(twist.id, "\">Responder</button>\n        </div>\n      </div>\n    ");
-        // Añadir event listeners a los botones de acción
-        setTimeout(function () {
-            // Like action
-            var likeButton = twistElement.querySelector(".like-action[data-twist-id=\"".concat(twist.id, "\"]"));
-            likeButton.addEventListener('click', function () { return _this.likeTwist(twist.id); });
-            // Reply action
-            var replyButton = twistElement.querySelector(".reply-action[data-twist-id=\"".concat(twist.id, "\"]"));
-            replyButton.addEventListener('click', function () { return _this.toggleReplyInput(twist.id); });
-            // Submit reply
-            var submitReplyButton = twistElement.querySelector(".reply-button[data-parent-id=\"".concat(twist.id, "\"]"));
-            submitReplyButton.addEventListener('click', function () { return _this.publishTwist(twist.id); });
-        }, 0);
+        var avatar = document.createElement('img');
+        avatar.src = twist.avatarUrl;
+        avatar.className = 'twist-avatar';
+        avatar.onerror = function () {
+            avatar.src = "https://via.placeholder.com/80";
+        };
+        var content = document.createElement('div');
+        content.className = 'twist-content';
+        var header = document.createElement('div');
+        header.className = 'twist-header';
+        var username = document.createElement('span');
+        username.className = 'username';
+        username.textContent = twist.username;
+        var timestamp = document.createElement('span');
+        timestamp.className = 'twist-timestamp';
+        timestamp.textContent = this.formatTimestamp(twist.timestamp);
+        var message = document.createElement('span');
+        message.className = 'message';
+        message.textContent = twist.content;
+        // Crear barra de acciones
+        var actionsBar = document.createElement('div');
+        actionsBar.className = 'twist-actions-bar';
+        // Botón de responder
+        var replyButton = document.createElement('button');
+        replyButton.className = 'twist-action reply-btn';
+        replyButton.innerHTML = "\n      <svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\">\n        <path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\"></path>\n      </svg>\n      <span>Responder</span>\n    ";
+        // Botón de me gusta
+        var likeButton = document.createElement('button');
+        likeButton.className = "twist-action like-btn ".concat(twist.isLiked ? 'liked' : '');
+        likeButton.innerHTML = "\n      <svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"".concat(twist.isLiked ? 'currentColor' : 'none', "\" stroke=\"currentColor\" stroke-width=\"2\">\n        <path d=\"M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z\"></path>\n      </svg>\n      <span>").concat(twist.likes, "</span>\n    ");
+        // Event listeners para las acciones
+        replyButton.addEventListener('click', function () {
+            _this.showReplyForm(twistElement, twist);
+        });
+        likeButton.addEventListener('click', function () {
+            _this.toggleLike(twist, likeButton);
+        });
+        actionsBar.appendChild(replyButton);
+        actionsBar.appendChild(likeButton);
+        header.appendChild(username);
+        header.appendChild(timestamp);
+        content.appendChild(header);
+        content.appendChild(message);
+        content.appendChild(actionsBar);
+        // Agregar respuestas si existen
+        if (twist.replies && twist.replies.length > 0) {
+            var repliesContainer_1 = document.createElement('div');
+            repliesContainer_1.className = 'replies-container';
+            twist.replies.forEach(function (reply) {
+                var replyElement = _this.createTwistElement(reply);
+                replyElement.classList.add('reply');
+                repliesContainer_1.appendChild(replyElement);
+            });
+            content.appendChild(repliesContainer_1);
+        }
+        twistElement.appendChild(avatar);
+        twistElement.appendChild(content);
         return twistElement;
     };
-    TwistApp.prototype.toggleReplyInput = function (twistId) {
-        var replyContainer = document.getElementById("reply-container-".concat(twistId));
-        if (replyContainer) {
-            var isVisible = replyContainer.style.display !== 'none';
-            replyContainer.style.display = isVisible ? 'none' : 'block';
-            // Enfocar el textarea si se está mostrando
-            if (!isVisible) {
-                var textarea = document.getElementById("reply-input-".concat(twistId));
-                textarea.focus();
-            }
-        }
-    };
-    TwistApp.prototype.likeTwist = function (twistId) {
-        // Función recursiva para encontrar y dar like a un twist
-        var findAndLikeTwist = function (items) {
-            for (var _i = 0, items_2 = items; _i < items_2.length; _i++) {
-                var item = items_2[_i];
-                if (item.id === twistId) {
-                    item.likes++;
-                    return true;
-                }
-                if (item.replies.length > 0) {
-                    if (findAndLikeTwist(item.replies)) {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        };
-        // Buscar y dar like
-        if (findAndLikeTwist(this.threads)) {
-            // Guardar en localStorage
-            this.saveToLocalStorage();
-            // Actualizar la UI
-            this.renderThreads();
-        }
-    };
-    TwistApp.prototype.formatContent = function (content) {
-        // Convertir URLs en enlaces
-        var formattedContent = content.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>');
-        // Convertir hashtags
-        formattedContent = formattedContent.replace(/#(\w+)/g, '<a href="#" class="hashtag">#$1</a>');
-        // Convertir menciones
-        formattedContent = formattedContent.replace(/@(\w+)/g, '<a href="#" class="mention">@$1</a>');
-        return formattedContent;
-    };
-    TwistApp.prototype.formatDate = function (date) {
+    TwistApp.prototype.formatTimestamp = function (date) {
         var now = new Date();
         var diff = now.getTime() - date.getTime();
-        // Menos de un minuto
-        if (diff < 60000) {
-            return 'hace unos segundos';
-        }
-        // Menos de una hora
-        if (diff < 3600000) {
-            var minutes = Math.floor(diff / 60000);
-            return "hace ".concat(minutes, " ").concat(minutes === 1 ? 'minuto' : 'minutos');
-        }
-        // Menos de un día
-        if (diff < 86400000) {
-            var hours = Math.floor(diff / 3600000);
-            return "hace ".concat(hours, " ").concat(hours === 1 ? 'hora' : 'horas');
-        }
-        // Menos de una semana
-        if (diff < 604800000) {
-            var days = Math.floor(diff / 86400000);
-            return "hace ".concat(days, " ").concat(days === 1 ? 'día' : 'días');
-        }
-        // Formato completo de fecha
-        return date.toLocaleDateString('es-ES', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric'
-        });
+        var minutes = Math.floor(diff / 60000);
+        if (minutes < 1)
+            return 'Ahora';
+        if (minutes < 60)
+            return "".concat(minutes, "m");
+        if (minutes < 1440)
+            return "".concat(Math.floor(minutes / 60), "h");
+        return "".concat(Math.floor(minutes / 1440), "d");
     };
     TwistApp.prototype.generateId = function () {
-        // Generar un ID único con timestamp y número aleatorio
-        return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        return Math.random().toString(36).substr(2, 9);
     };
     TwistApp.prototype.saveToLocalStorage = function () {
-        localStorage.setItem('twist-threads', JSON.stringify(this.threads));
+        localStorage.setItem('twistThreads', JSON.stringify(this.threads));
     };
     TwistApp.prototype.loadFromLocalStorage = function () {
-        var storedThreads = localStorage.getItem('twist-threads');
-        if (storedThreads) {
-            try {
-                var parsedThreads = JSON.parse(storedThreads);
-                // Convertir las fechas de string a Date
-                this.threads = this.convertDates(parsedThreads);
-            }
-            catch (error) {
-                console.error('Error al cargar datos del localStorage:', error);
-                this.threads = [];
-            }
+        var savedThreads = localStorage.getItem('twistThreads');
+        if (savedThreads) {
+            this.threads = JSON.parse(savedThreads).map(function (twist) { return (__assign(__assign({}, twist), { timestamp: new Date(twist.timestamp), likes: twist.likes || 0, isLiked: twist.isLiked || false, replies: twist.replies || [] })); });
         }
     };
-    TwistApp.prototype.convertDates = function (items) {
+    TwistApp.prototype.toggleLike = function (twist, likeButton) {
+        twist.isLiked = !twist.isLiked;
+        twist.likes += twist.isLiked ? 1 : -1;
+        // Actualizar la apariencia del botón
+        var svg = likeButton.querySelector('svg');
+        var span = likeButton.querySelector('span');
+        if (twist.isLiked) {
+            likeButton.classList.add('liked');
+            if (svg)
+                svg.setAttribute('fill', 'currentColor');
+        }
+        else {
+            likeButton.classList.remove('liked');
+            if (svg)
+                svg.setAttribute('fill', 'none');
+        }
+        if (span)
+            span.textContent = twist.likes.toString();
+        // Guardar en localStorage
+        this.saveToLocalStorage();
+    };
+    TwistApp.prototype.showReplyForm = function (twistElement, parentTwist) {
         var _this = this;
-        return items.map(function (item) {
-            // Convertir timestamp a Date
-            item.timestamp = new Date(item.timestamp);
-            // Convertir recursivamente las fechas en las respuestas
-            if (item.replies && Array.isArray(item.replies)) {
-                item.replies = _this.convertDates(item.replies);
+        // Verificar si ya existe un formulario de respuesta
+        var existingForm = twistElement.querySelector('.reply-form');
+        if (existingForm) {
+            existingForm.remove();
+            return;
+        }
+        // Crear formulario de respuesta
+        var replyForm = document.createElement('div');
+        replyForm.className = 'reply-form';
+        var replyTextarea = document.createElement('textarea');
+        replyTextarea.placeholder = 'Escribe tu respuesta...';
+        replyTextarea.className = 'reply-textarea';
+        replyTextarea.maxLength = this.maxCharacters;
+        var replyActions = document.createElement('div');
+        replyActions.className = 'reply-actions';
+        var charCounter = document.createElement('span');
+        charCounter.className = 'reply-char-count';
+        charCounter.textContent = this.maxCharacters.toString();
+        var cancelButton = document.createElement('button');
+        cancelButton.textContent = 'Cancelar';
+        cancelButton.className = 'cancel-btn';
+        var replyButton = document.createElement('button');
+        replyButton.textContent = 'Responder';
+        replyButton.className = 'reply-submit-btn';
+        replyButton.disabled = true;
+        // Event listeners para el formulario
+        replyTextarea.addEventListener('input', function () {
+            var remaining = _this.maxCharacters - replyTextarea.value.length;
+            charCounter.textContent = remaining.toString();
+            if (remaining < 20) {
+                charCounter.style.color = 'var(--error-color)';
             }
-            return item;
+            else if (remaining < 50) {
+                charCounter.style.color = '#ffa726';
+            }
+            else {
+                charCounter.style.color = 'var(--text-secondary)';
+            }
+            replyButton.disabled = remaining < 0 || replyTextarea.value.trim() === '';
         });
+        cancelButton.addEventListener('click', function () {
+            replyForm.remove();
+        });
+        replyButton.addEventListener('click', function () {
+            _this.submitReply(parentTwist, replyTextarea.value.trim(), twistElement);
+            replyForm.remove();
+        });
+        replyActions.appendChild(charCounter);
+        replyActions.appendChild(cancelButton);
+        replyActions.appendChild(replyButton);
+        replyForm.appendChild(replyTextarea);
+        replyForm.appendChild(replyActions);
+        // Insertar el formulario después del twist
+        twistElement.appendChild(replyForm);
+        replyTextarea.focus();
+    };
+    TwistApp.prototype.submitReply = function (parentTwist, replyContent, twistElement) {
+        var _a;
+        if (!replyContent)
+            return;
+        var username = this.usernameInput.value.trim() || "Anónimo";
+        var avatarUrl = this.avatarInput.value.trim() || "https://via.placeholder.com/80";
+        var replyData = {
+            id: this.generateId(),
+            content: replyContent,
+            username: username,
+            avatarUrl: avatarUrl,
+            timestamp: new Date(),
+            likes: 0,
+            isLiked: false,
+            replies: []
+        };
+        // Agregar la respuesta al twist padre
+        if (!parentTwist.replies) {
+            parentTwist.replies = [];
+        }
+        parentTwist.replies.push(replyData);
+        // Crear elemento de respuesta
+        var replyElement = this.createTwistElement(replyData);
+        replyElement.classList.add('reply');
+        // Buscar o crear contenedor de respuestas
+        var repliesContainer = twistElement.querySelector('.replies-container');
+        if (!repliesContainer) {
+            repliesContainer = document.createElement('div');
+            repliesContainer.className = 'replies-container';
+            (_a = twistElement.querySelector('.twist-content')) === null || _a === void 0 ? void 0 : _a.appendChild(repliesContainer);
+        }
+        repliesContainer.appendChild(replyElement);
+        // Guardar en localStorage
+        this.saveToLocalStorage();
+        // Scroll hacia la nueva respuesta
+        replyElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    };
+    // Método público para inicializar la aplicación
+    TwistApp.prototype.init = function () {
+        this.updateCharCount();
+        this.updateAvatarPreview();
+        console.log('TwistApp inicializada correctamente');
     };
     return TwistApp;
 }());
-// Inicializar la aplicación cuando se carga el DOM
+// Inicializar la aplicación cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', function () {
-    // Cargar Font Awesome para iconos
-    var fontAwesome = document.createElement('link');
-    fontAwesome.rel = 'stylesheet';
-    fontAwesome.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css';
-    document.head.appendChild(fontAwesome);
-    // Iniciar la aplicación
-    new TwistApp();
+    var app = new TwistApp();
+    app.init();
 });
